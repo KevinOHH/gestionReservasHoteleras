@@ -1,1 +1,256 @@
-<p>huesped works!</p>
+<div class="huesped-container">
+
+  <!-- ═══════════════════════════════════════════
+       VISTA: LISTA
+  ═══════════════════════════════════════════ -->
+  <ng-container *ngIf="vista === 'lista'">
+
+    <div class="page-header">
+      <div class="header-left">
+        <div class="header-icon">🏨</div>
+        <div>
+          <h1 class="page-title">Huéspedes</h1>
+          <p class="page-subtitle">Gestión de huéspedes registrados</p>
+        </div>
+      </div>
+      <button class="btn btn-primary" (click)="irANuevo()">
+        <span class="btn-icon-text">+</span> Nuevo Huésped
+      </button>
+    </div>
+
+    <div class="alert alert-success" *ngIf="successMsg">✔ {{ successMsg }}</div>
+    <div class="alert alert-error"   *ngIf="errorMsg">✖ {{ errorMsg }}</div>
+
+    <div class="loading-wrap" *ngIf="loading">
+      <div class="spinner"></div>
+      <span>Cargando huéspedes...</span>
+    </div>
+
+    <div class="table-card" *ngIf="!loading">
+      <div class="table-meta">
+        <span class="table-count">{{ huespedes.length }} registros</span>
+      </div>
+      <div class="table-wrapper">
+        <table class="h-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Email</th>
+              <th>Teléfono</th>
+              <th>Documento</th>
+              <th>Nacionalidad</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let h of huespedes"
+                [class.row-eliminado]="h.estadoRegistro === 'ELIMINADO'">
+              <td class="td-id">#{{ h.id }}</td>
+              <td class="td-nombre">{{ h.nombre }} {{ h.apellido }}</td>
+              <td>{{ h.email }}</td>
+              <td>{{ h.telefono }}</td>
+              <td>{{ h.documento }}</td>
+              <td>{{ h.nacionalidad }}</td>
+              <td>
+                <span class="badge"
+                      [class.badge-activo]="h.estadoRegistro === 'ACTIVO'"
+                      [class.badge-eliminado]="h.estadoRegistro === 'ELIMINADO'">
+                  {{ h.estadoRegistro }}
+                </span>
+              </td>
+              <td class="td-actions">
+                <button class="act-btn act-view" title="Ver detalle" (click)="irADetalle(h)">👁</button>
+                <button class="act-btn act-edit" title="Editar"
+                        *ngIf="h.estadoRegistro === 'ACTIVO'"
+                        (click)="irAEditar(h)">✏️</button>
+                <button class="act-btn act-delete" title="Eliminar"
+                        *ngIf="isAdmin() && h.estadoRegistro === 'ACTIVO'"
+                        (click)="eliminar(h)">🗑</button>
+              </td>
+            </tr>
+            <tr *ngIf="huespedes.length === 0">
+              <td colspan="8" class="empty-row">No hay huéspedes registrados.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </ng-container>
+
+
+  <!-- ═══════════════════════════════════════════
+       VISTA: FORMULARIO (crear / editar)
+  ═══════════════════════════════════════════ -->
+  <ng-container *ngIf="vista === 'formulario'">
+
+    <div class="page-header">
+      <button class="btn-back" (click)="irALista()">← Volver</button>
+      <div>
+        <h1 class="page-title">{{ isEditing ? 'Editar Huésped' : 'Nuevo Huésped' }}</h1>
+        <p class="page-subtitle">
+          {{ isEditing ? 'Modifique los datos del huésped' : 'Complete los campos para registrar' }}
+        </p>
+      </div>
+    </div>
+
+    <div class="alert alert-success" *ngIf="successMsg">✔ {{ successMsg }}</div>
+    <div class="alert alert-error"   *ngIf="errorMsg">✖ {{ errorMsg }}</div>
+
+    <div class="form-card">
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+
+        <div class="form-grid">
+
+          <!-- Nombre -->
+          <div class="form-group">
+            <label class="form-label" for="nombre">Nombre <span class="req">*</span></label>
+            <input id="nombre" type="text" class="form-control"
+                   [class.is-invalid]="isInvalid('nombre')"
+                   formControlName="nombre" placeholder="Ej. Juan">
+            <div class="invalid-feedback" *ngIf="isInvalid('nombre')">
+              <ng-container *ngIf="form.get('nombre')?.hasError('required')">Obligatorio.</ng-container>
+              <ng-container *ngIf="form.get('nombre')?.hasError('minlength')">Mínimo 2 caracteres.</ng-container>
+              <ng-container *ngIf="form.get('nombre')?.hasError('maxlength')">Máximo 50 caracteres.</ng-container>
+            </div>
+          </div>
+
+          <!-- Apellido -->
+          <div class="form-group">
+            <label class="form-label" for="apellido">Apellido <span class="req">*</span></label>
+            <input id="apellido" type="text" class="form-control"
+                   [class.is-invalid]="isInvalid('apellido')"
+                   formControlName="apellido" placeholder="Ej. Pérez">
+            <div class="invalid-feedback" *ngIf="isInvalid('apellido')">
+              <ng-container *ngIf="form.get('apellido')?.hasError('required')">Obligatorio.</ng-container>
+              <ng-container *ngIf="form.get('apellido')?.hasError('minlength')">Mínimo 2 caracteres.</ng-container>
+              <ng-container *ngIf="form.get('apellido')?.hasError('maxlength')">Máximo 50 caracteres.</ng-container>
+            </div>
+          </div>
+
+          <!-- Email -->
+          <div class="form-group form-full">
+            <label class="form-label" for="email">Email <span class="req">*</span></label>
+            <input id="email" type="email" class="form-control"
+                   [class.is-invalid]="isInvalid('email')"
+                   formControlName="email" placeholder="correo@ejemplo.com">
+            <div class="invalid-feedback" *ngIf="isInvalid('email')">
+              <ng-container *ngIf="form.get('email')?.hasError('required')">Obligatorio.</ng-container>
+              <ng-container *ngIf="form.get('email')?.hasError('email')">Formato inválido.</ng-container>
+            </div>
+          </div>
+
+          <!-- Teléfono -->
+          <div class="form-group">
+            <label class="form-label" for="telefono">Teléfono <span class="req">*</span></label>
+            <input id="telefono" type="text" class="form-control"
+                   [class.is-invalid]="isInvalid('telefono')"
+                   formControlName="telefono" placeholder="10 dígitos" maxlength="10">
+            <div class="invalid-feedback" *ngIf="isInvalid('telefono')">
+              <ng-container *ngIf="form.get('telefono')?.hasError('required')">Obligatorio.</ng-container>
+              <ng-container *ngIf="form.get('telefono')?.hasError('pattern')">Exactamente 10 dígitos.</ng-container>
+            </div>
+          </div>
+
+          <!-- Documento -->
+          <div class="form-group">
+            <label class="form-label" for="documento">Documento <span class="req">*</span></label>
+            <input id="documento" type="text" class="form-control"
+                   [class.is-invalid]="isInvalid('documento')"
+                   formControlName="documento" placeholder="Número de documento">
+            <div class="invalid-feedback" *ngIf="isInvalid('documento')">Obligatorio.</div>
+          </div>
+
+          <!-- Nacionalidad -->
+          <div class="form-group form-full">
+            <label class="form-label" for="nacionalidad">Nacionalidad <span class="req">*</span></label>
+            <input id="nacionalidad" type="text" class="form-control"
+                   [class.is-invalid]="isInvalid('nacionalidad')"
+                   formControlName="nacionalidad" placeholder="Ej. Mexicana">
+            <div class="invalid-feedback" *ngIf="isInvalid('nacionalidad')">Obligatorio.</div>
+          </div>
+
+        </div>
+
+        <!-- Acciones -->
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary"
+                  (click)="irALista()" [disabled]="submitting">Cancelar</button>
+          <button type="submit" class="btn btn-primary" [disabled]="submitting">
+            <span class="spinner-sm" *ngIf="submitting"></span>
+            {{ submitting ? 'Guardando...' : (isEditing ? 'Actualizar' : 'Registrar') }}
+          </button>
+        </div>
+
+      </form>
+    </div>
+
+  </ng-container>
+
+
+  <!-- ═══════════════════════════════════════════
+       VISTA: DETALLE
+  ═══════════════════════════════════════════ -->
+  <ng-container *ngIf="vista === 'detalle' && huespedSeleccionado">
+
+    <div class="page-header">
+      <button class="btn-back" (click)="irALista()">← Volver</button>
+      <div>
+        <h1 class="page-title">Detalle de Huésped</h1>
+        <p class="page-subtitle">Información completa del registro</p>
+      </div>
+    </div>
+
+    <div class="alert alert-error" *ngIf="errorMsg">✖ {{ errorMsg }}</div>
+
+    <div class="detail-card">
+
+      <div class="detail-hero">
+        <div class="avatar">{{ iniciales(huespedSeleccionado) }}</div>
+        <div class="hero-info">
+          <h2>{{ huespedSeleccionado.nombre }} {{ huespedSeleccionado.apellido }}</h2>
+          <span class="badge"
+                [class.badge-activo]="huespedSeleccionado.estadoRegistro === 'ACTIVO'"
+                [class.badge-eliminado]="huespedSeleccionado.estadoRegistro === 'ELIMINADO'">
+            {{ huespedSeleccionado.estadoRegistro }}
+          </span>
+        </div>
+      </div>
+
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span class="detail-label">ID</span>
+          <span class="detail-value">#{{ huespedSeleccionado.id }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Email</span>
+          <span class="detail-value">{{ huespedSeleccionado.email }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Teléfono</span>
+          <span class="detail-value">{{ huespedSeleccionado.telefono }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Documento</span>
+          <span class="detail-value">{{ huespedSeleccionado.documento }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Nacionalidad</span>
+          <span class="detail-value">{{ huespedSeleccionado.nacionalidad }}</span>
+        </div>
+      </div>
+
+      <div class="detail-actions"
+           *ngIf="huespedSeleccionado.estadoRegistro === 'ACTIVO'">
+        <button class="btn btn-primary" (click)="irAEditar(huespedSeleccionado)">✏️ Editar</button>
+        <button class="btn btn-danger" *ngIf="isAdmin()"
+                (click)="eliminar(huespedSeleccionado)">🗑 Eliminar</button>
+      </div>
+
+    </div>
+
+  </ng-container>
+
+</div>
