@@ -3,7 +3,7 @@ import { BrowserModule } from '@angular/platform-browser';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
-import { PacientesComponent } from './components/pacientes/pacientes.component';
+//import { PacientesComponent } from './components/pacientes/pacientes.component';
 import { NavbarComponent } from './components/common/navbar/navbar.component';
 import { FooterComponent } from './components/common/footer/footer.component';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
@@ -15,18 +15,20 @@ import { ErrorInterceptor } from './shared/error.interceptor';
 import { ReservasComponent } from './components/reservas/reservas.component';
 import { HabitacionesComponent } from './components/habitaciones/habitaciones.component';
 import { HuespedComponent } from './components/huesped/huesped.component';
+import { UsuariosComponent } from './components/usuarios/usuarios.component';
 
 @NgModule({
   declarations: [
     AppComponent,
-    PacientesComponent,
+//    PacientesComponent,
     NavbarComponent,
     FooterComponent,
     DashboardComponent,
     LoginComponent,
     ReservasComponent,
     HabitacionesComponent,
-    HuespedComponent
+    HuespedComponent,
+    UsuariosComponent
   ],
   imports: [
     BrowserModule,
