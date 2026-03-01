@@ -1,41 +1,57 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
 import { HuespedService } from '../../services/huesped.service';
 import { HuespedResponse } from '../../models/Huesped.model';
+import { AuthService } from '../../services/auth.service';
+import Swal from 'sweetalert2';
 
-type Vista = 'lista' | 'formulario' | 'detalle';
+type Vista = 'lista' | 'formulario' | 'busqueda';
 
 @Component({
   selector: 'app-huesped',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule, FormsModule],
   templateUrl: './huesped.component.html',
   styleUrls: ['./huesped.component.css']
 })
 export class HuespedComponent implements OnInit {
 
-  // ── Estado de vista ──────────────────────────────────────
   vista: Vista = 'lista';
   isEditing = false;
   huespedSeleccionado?: HuespedResponse;
   huespedId?: number;
 
-  // ── Datos ─────────────────────────────────────────────────
   huespedes: HuespedResponse[] = [];
 
-  // ── Formulario ────────────────────────────────────────────
-  form!: FormGroup;
+  busquedaId: string = '';
+  busquedaResultado?: HuespedResponse;
+  busquedaError: string = '';
+  buscando: boolean = false;
 
-  // ── Estado UI ─────────────────────────────────────────────
+  tiposDocumento = ['INE', 'PASAPORTE', 'LICENCIA'];
+
+  nacionalidades = [
+    { value: 'MEXICANA',       label: 'Mexicana' },
+    { value: 'ARGENTINA',      label: 'Argentina' },
+    { value: 'CHILENA',        label: 'Chilena' },
+    { value: 'COLOMBIANA',     label: 'Colombiana' },
+    { value: 'PERUANA',        label: 'Peruana' },
+    { value: 'ESPAÑOLA',       label: 'Española' },
+    { value: 'FRANCESA',       label: 'Francesa' },
+    { value: 'ITALIANA',       label: 'Italiana' },
+    { value: 'ESTADOUNIDENSE', label: 'Estadounidense' },
+    { value: 'CANADIENSE',     label: 'Canadiense' },
+  ];
+
+  form!: FormGroup;
   loading = false;
   submitting = false;
-  errorMsg = '';
-  successMsg = '';
-
-  // ── Rol (ajusta según tu AuthService real) ────────────────
-  rolUsuario: string = localStorage.getItem('rol') || 'USER';
 
   constructor(
     private fb: FormBuilder,
-    private huespedService: HuespedService
+    private huespedService: HuespedService,
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
@@ -43,108 +59,189 @@ export class HuespedComponent implements OnInit {
     this.cargarLista();
   }
 
-  // ── Formulario reactivo ───────────────────────────────────
   buildForm(): void {
     this.form = this.fb.group({
-      nombre:       ['', [Validators.required, Validators.minLength(2), Validators.maxLength(50)]],
-      apellido:     ['', [Validators.required, Validators.minLength(2), Validators.maxLength(50)]],
-      email:        ['', [Validators.required, Validators.email]],
-      telefono:     ['', [Validators.required, Validators.pattern(/^\d{10}$/)]],
-      documento:    ['', [Validators.required]],
-      nacionalidad: ['', [Validators.required]]
+      nombre:        ['', [Validators.required, Validators.minLength(2), Validators.maxLength(50)]],
+      apellido:      ['', [Validators.required, Validators.minLength(2), Validators.maxLength(50)]],
+      email:         ['', [Validators.required, Validators.email]],
+      telefono:      ['', [Validators.required, Validators.pattern(/^\d{10}$/)]],
+      tipoDocumento: ['', [Validators.required]],
+      nacionalidad:  ['', [Validators.required]]
     });
   }
 
-  // ── LISTA ─────────────────────────────────────────────────
   cargarLista(): void {
     this.loading = true;
-    this.errorMsg = '';
     this.huespedService.getAll().subscribe({
-      next: (data) => { this.huespedes = data; this.loading = false; },
-      error: (err)  => { this.errorMsg = this.resolverError(err); this.loading = false; }
+      next: (data) => {
+        this.huespedes = data;
+        this.loading = false;
+      },
+      error: (err) => {
+        this.loading = false;
+        Swal.fire({
+          icon: 'error',
+          title: 'Error al cargar',
+          text: this.resolverError(err),
+          confirmButtonColor: '#2563eb'
+        });
+      }
     });
   }
 
-  // ── NAVEGACIÓN ENTRE VISTAS ───────────────────────────────
   irALista(): void {
     this.vista = 'lista';
-    this.errorMsg = '';
-    this.successMsg = '';
     this.form.reset();
     this.isEditing = false;
     this.huespedSeleccionado = undefined;
+    this.limpiarBusqueda();
   }
 
   irANuevo(): void {
     this.form.reset();
     this.isEditing = false;
     this.huespedId = undefined;
-    this.errorMsg = '';
-    this.successMsg = '';
     this.vista = 'formulario';
   }
 
   irAEditar(h: HuespedResponse): void {
     this.isEditing = true;
     this.huespedId = h.id;
-    this.form.patchValue(h);
-    this.errorMsg = '';
-    this.successMsg = '';
+    this.form.patchValue({
+      nombre:        h.nombre,
+      apellido:      h.apellido,
+      email:         h.email,
+      telefono:      h.telefono,
+      tipoDocumento: h.tipoDocumento,
+      nacionalidad:  h.nacionalidad
+    });
     this.vista = 'formulario';
   }
 
-  irADetalle(h: HuespedResponse): void {
-    this.huespedSeleccionado = h;
-    this.errorMsg = '';
-    this.vista = 'detalle';
+  irABusqueda(): void {
+    this.limpiarBusqueda();
+    this.vista = 'busqueda';
   }
 
-  // ── SUBMIT FORMULARIO ─────────────────────────────────────
+  buscarPorId(): void {
+    const id = parseInt(this.busquedaId, 10);
+    if (!id || id <= 0) {
+      this.busquedaError = 'Ingrese un ID válido (número mayor a 0).';
+      return;
+    }
+    this.buscando = true;
+    this.busquedaError = '';
+    this.busquedaResultado = undefined;
+
+    this.huespedService.getByHuespedId(id).subscribe({
+      next: (data) => {
+        this.busquedaResultado = data;
+        this.buscando = false;
+      },
+      error: (err) => {
+        this.busquedaError = this.resolverError(err);
+        this.buscando = false;
+      }
+    });
+  }
+
+  limpiarBusqueda(): void {
+    this.busquedaId = '';
+    this.busquedaResultado = undefined;
+    this.busquedaError = '';
+    this.buscando = false;
+  }
+
   onSubmit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+      Swal.fire({
+        icon: 'warning',
+        title: 'Formulario incompleto',
+        text: 'Por favor complete todos los campos correctamente.',
+        confirmButtonColor: '#2563eb'
+      });
       return;
     }
-    this.submitting = true;
-    this.errorMsg = '';
 
+    this.submitting = true;
     const data = this.form.value;
+
     const op = this.isEditing
       ? this.huespedService.update(this.huespedId!, data)
       : this.huespedService.create(data);
 
     op.subscribe({
       next: () => {
-        this.successMsg = this.isEditing
-          ? 'Huésped actualizado correctamente.'
-          : 'Huésped registrado correctamente.';
         this.submitting = false;
-        this.cargarLista();
-        setTimeout(() => this.irALista(), 1500);
+        Swal.fire({
+          icon: 'success',
+          title: this.isEditing ? '¡Actualizado!' : '¡Registrado!',
+          text: this.isEditing
+            ? 'El huésped fue actualizado correctamente.'
+            : 'El huésped fue registrado correctamente.',
+          confirmButtonColor: '#2563eb',
+          timer: 2000,
+          timerProgressBar: true
+        }).then(() => {
+          this.cargarLista();
+          this.irALista();
+        });
       },
       error: (err) => {
-        this.errorMsg = this.resolverError(err);
         this.submitting = false;
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: this.resolverError(err),
+          confirmButtonColor: '#2563eb'
+        });
       }
     });
   }
 
-  // ── ELIMINAR ──────────────────────────────────────────────
   eliminar(h: HuespedResponse): void {
-    if (!confirm(`¿Eliminar a ${h.nombre} ${h.apellido}?`)) return;
-    this.huespedService.delete(h.id).subscribe({
-      next: () => {
-        this.successMsg = 'Huésped eliminado.';
-        this.cargarLista();
-        setTimeout(() => this.successMsg = '', 3000);
-      },
-      error: (err) => { this.errorMsg = this.resolverError(err); }
+    Swal.fire({
+      title: '¿Eliminar huésped?',
+      text: `${h.nombre} ${h.apellido} será marcado como eliminado.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+
+      this.huespedService.delete(h.id).subscribe({
+        next: () => {
+          Swal.fire({
+            icon: 'success',
+            title: 'Eliminado',
+            text: 'El huésped fue eliminado correctamente.',
+            confirmButtonColor: '#2563eb',
+            timer: 2000,
+            timerProgressBar: true
+          });
+          this.cargarLista();
+          if (this.vista === 'busqueda' && this.busquedaResultado) {
+            this.buscarPorId();
+          }
+        },
+        error: (err) => {
+          Swal.fire({
+            icon: 'error',
+            title: 'No se pudo eliminar',
+            text: this.resolverError(err),
+            confirmButtonColor: '#2563eb'
+          });
+        }
+      });
     });
   }
 
-  // ── HELPERS ───────────────────────────────────────────────
   isAdmin(): boolean {
-    return this.rolUsuario === 'ADMIN';
+    return this.authService.hasRole('ROLE_ADMIN');
   }
 
   isInvalid(campo: string): boolean {

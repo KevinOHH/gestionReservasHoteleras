@@ -3,7 +3,7 @@ export interface HuespedRequest {
   apellido: string;
   email: string;
   telefono: string;
-  documento: string;
+  tipoDocumento: string;
   nacionalidad: string;
 }
 
@@ -13,7 +13,7 @@ export interface HuespedResponse {
   apellido: string;
   email: string;
   telefono: string;
-  documento: string;
+  tipoDocumento: string;
   nacionalidad: string;
   estadoRegistro: 'ACTIVO' | 'ELIMINADO';
 }

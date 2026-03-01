@@ -23,15 +23,15 @@ import { HuespedComponent } from './components/huesped/huesped.component';
     DashboardComponent,
     LoginComponent,
     ReservasComponent,
-    HabitacionesComponent,
-    HuespedComponent
+    HabitacionesComponent
   ],
   imports: [
     BrowserModule,
     AppRoutingModule,
     FormsModule,
     ReactiveFormsModule,
-    HttpClientModule
+    HttpClientModule,
+    HuespedComponent
   ],
   providers: [
     { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true },
