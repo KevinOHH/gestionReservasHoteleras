@@ -92,7 +92,7 @@ export class CUsuarioComponent implements OnInit {
       password: '',
       rol: u.roles[0] ?? ''
     });
-    // Al editar, password no es obligatoria si se deja vacía
+
     this.form.get('password')?.clearValidators();
     this.form.get('password')?.setValidators([
       Validators.minLength(8),
