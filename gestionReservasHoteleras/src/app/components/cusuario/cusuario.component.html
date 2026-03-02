@@ -1,0 +1,131 @@
+<div class="cusuario-container">
+
+  <ng-container *ngIf="vista === 'lista'">
+
+    <div class="page-header">
+      <div class="header-left">
+        <div>
+          <h1 class="page-title">Usuarios</h1>
+          <p class="page-subtitle">Gestión de usuarios del sistema</p>
+        </div>
+      </div>
+      <button class="btn btn-primary" (click)="irANuevo()">Nuevo Usuario</button>
+    </div>
+
+    <div class="loading-wrap" *ngIf="loading">
+      <div class="spinner"></div>
+      <span>Cargando usuarios...</span>
+    </div>
+
+    <div class="table-card" *ngIf="!loading">
+      <div class="table-meta">
+        <span class="table-count">{{ usuarios.length }} registros</span>
+      </div>
+      <div class="table-wrapper">
+        <table class="h-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Username</th>
+              <th>Rol</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let u of usuarios">
+              <td class="td-id">#{{ u.id }}</td>
+              <td class="td-nombre">{{ u.username }}</td>
+              <td>{{ rolLabel(u.roles) }}</td>
+              <td>
+                <span class="badge"
+                      [class.badge-activo]="u.estadoRegistro === 'ACTIVO'"
+                      [class.badge-eliminado]="u.estadoRegistro === 'ELIMINADO'">
+                  {{ u.estadoRegistro }}
+                </span>
+              </td>
+              <td class="td-actions">
+                <button class="act-btn act-edit" title="Editar" (click)="irAEditar(u)">ED</button>
+                <button class="act-btn act-delete" title="Eliminar" (click)="eliminar(u)">BR</button>
+              </td>
+            </tr>
+            <tr *ngIf="usuarios.length === 0">
+              <td colspan="5" class="empty-row">No hay usuarios registrados.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </ng-container>
+
+  <!-- ===== FORMULARIO ===== -->
+  <ng-container *ngIf="vista === 'formulario'">
+
+    <div class="page-header">
+      <button class="btn-back" (click)="irALista()">← Volver</button>
+      <div>
+        <h1 class="page-title">{{ isEditing ? 'Editar Usuario' : 'Nuevo Usuario' }}</h1>
+        <p class="page-subtitle">{{ isEditing ? 'Modifique los datos del usuario' : 'Complete los campos para crear' }}</p>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+        <div class="form-grid">
+
+          <div class="form-group form-full">
+            <label class="form-label">Username <span class="req">*</span></label>
+            <input type="text" class="form-control"
+                   [class.is-invalid]="isInvalid('username')"
+                   formControlName="username"
+                   placeholder="Entre 5 y 20 caracteres">
+            <div class="invalid-feedback" *ngIf="isInvalid('username')">
+              <ng-container *ngIf="form.get('username')?.hasError('required')">Obligatorio.</ng-container>
+              <ng-container *ngIf="form.get('username')?.hasError('minlength')">Mínimo 5 caracteres.</ng-container>
+              <ng-container *ngIf="form.get('username')?.hasError('maxlength')">Máximo 20 caracteres.</ng-container>
+            </div>
+          </div>
+
+          <div class="form-group form-full">
+            <label class="form-label">
+              Password <span class="req">*</span>
+              <span class="label-hint" *ngIf="isEditing">(dejar vacío para no cambiar)</span>
+            </label>
+            <input type="password" class="form-control"
+                   [class.is-invalid]="isInvalid('password')"
+                   formControlName="password"
+                   placeholder="Mínimo 8 caracteres, letras y números">
+            <div class="invalid-feedback" *ngIf="isInvalid('password')">
+              <ng-container *ngIf="form.get('password')?.hasError('minlength')">Mínimo 8 caracteres.</ng-container>
+              <ng-container *ngIf="form.get('password')?.hasError('pattern')">Debe contener letras y números.</ng-container>
+            </div>
+          </div>
+
+          <div class="form-group form-full">
+            <label class="form-label">Rol <span class="req">*</span></label>
+            <select class="form-control"
+                    [class.is-invalid]="isInvalid('rol')"
+                    formControlName="rol">
+              <option value="">-- Seleccione --</option>
+              <option *ngFor="let r of roles" [value]="r.value">{{ r.label }}</option>
+            </select>
+            <div class="invalid-feedback" *ngIf="isInvalid('rol')">Obligatorio.</div>
+          </div>
+
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" (click)="irALista()" [disabled]="submitting">✕ Cancelar</button>
+          <button type="submit" class="btn btn-primary" [disabled]="submitting">
+            <span class="spinner-sm" *ngIf="submitting"></span>
+            {{ submitting ? 'Guardando...' : (isEditing ? 'Actualizar' : 'Crear') }}
+          </button>
+        </div>
+
+      </form>
+    </div>
+
+  </ng-container>
+
+</div>
